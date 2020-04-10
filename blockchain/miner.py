@@ -1,7 +1,7 @@
 import hashlib
 import requests
 import json
-
+import time
 import sys
 
 from uuid import uuid4
@@ -29,7 +29,9 @@ def proof_of_work(last_proof):
     last_hash = hashlib.sha256(last_string).hexdigest()
 
     while not valid_proof(last_hash, proof):
-        proof = str(random.random() + 256)
+        proof = proof + 24
+        if timer()-start > 3:
+            return None
     print("Proof found: " + str(proof) + " in " + str(timer() - start))
     return proof
 
@@ -69,14 +71,23 @@ if __name__ == '__main__':
     while True:
         # Get the last proof from the server
         r = requests.get(url=node + "/last_proof")
-        data = r.json()
+        try:
+            data = r.json()
+        except:
+            print('Invalid JSON')
+            continue
         new_proof = proof_of_work(data.get('proof'))
-
+        if new_proof is None:
+            continue
         post_data = {"proof": new_proof,
                      "id": id}
 
         r = requests.post(url=node + "/mine", json=post_data)
-        data = r.json()
+        try:
+            data = r.json()
+        except:
+            print('Invalid JSON')
+            continue
         if data.get('message') == 'New Block Forged':
             coins_mined += 1
             print("Total coins mined: " + str(coins_mined))
